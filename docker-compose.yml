@@ -1,0 +1,63 @@
+version: '3'
+services:
+  app:
+    build: .
+    ports:
+      - '8000:80'
+    volumes:
+      - '.:/var/www/html'
+    restart: always
+    depends_on:
+      - mysql
+      - redis
+  mysql:
+    image: 'mysql:8.0.28'
+    restart: always
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      - 'app-mysql:/var/lib/mysql'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
+      retries: 3
+      timeout: 5s
+  redis:
+    image: 'redis:alpine'
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - 'app-redis:/data'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      retries: 3
+      timeout: 5s
+    command: redis-server --appendonly yes --replica-read-only no
+  swagger:
+    image: swaggerapi/swagger-ui:v4.2.1
+    restart: always
+    ports:
+      - "9000:8080"
+    volumes:
+      - './openapi.yml:/usr/local/openapi.yml'
+    environment:
+      SWAGGER_JSON: /usr/local/openapi.yml
+  phpmyadmin:
+    image: phpmyadmin:5.1.1
+    restart: always
+    ports:
+      - 5000:80
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+volumes:
+  app-mysql:
+    driver: local
+  app-redis:
+    driver: local
